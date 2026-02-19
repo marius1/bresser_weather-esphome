@@ -1,6 +1,10 @@
 #pragma once
 
+#include <cmath>
+#include <string>
+
 #include "esphome/core/component.h"
+#include "esphome/core/automation.h"
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/binary_sensor/binary_sensor.h"
 #include "esphome/components/text_sensor/text_sensor.h"
@@ -11,6 +15,27 @@ namespace esphome
 {
     namespace bresser_weather
     {
+
+        struct WeatherData
+        {
+            std::string sensor_id;
+            float rssi;
+            bool battery_ok;
+            float temperature;
+            bool temperature_ok;
+            float humidity;
+            bool humidity_ok;
+            float wind_gust;
+            float wind_speed;
+            float wind_direction;
+            bool wind_ok;
+            float rain;
+            bool rain_ok;
+            float uv;
+            bool uv_ok;
+            float light;
+            bool light_ok;
+        };
 
         class BresserWeatherComponent : public Component
         {
@@ -36,6 +61,11 @@ namespace esphome
                 filter_enabled_ = true;
             }
 
+            void add_on_value_callback(std::function<void(const WeatherData &)> callback)
+            {
+                this->data_callback_.add(std::move(callback));
+            }
+
         protected:
             WeatherSensor ws_;
             uint32_t filter_sensor_id_{0};
@@ -52,6 +82,18 @@ namespace esphome
             sensor::Sensor *rssi_sensor_{nullptr};
             binary_sensor::BinarySensor *battery_sensor_{nullptr};
             text_sensor::TextSensor *sensor_id_sensor_{nullptr};
+
+            CallbackManager<void(const WeatherData &)> data_callback_;
+        };
+
+        class WeatherDataTrigger : public Trigger<WeatherData>
+        {
+        public:
+            explicit WeatherDataTrigger(BresserWeatherComponent *parent)
+            {
+                parent->add_on_value_callback([this](const WeatherData &data)
+                                              { this->trigger(data); });
+            }
         };
 
     } // namespace bresser_weather

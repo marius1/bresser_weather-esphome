@@ -44,12 +44,14 @@ namespace esphome
                     (this->ws_.sensor[i].s_type == SENSOR_TYPE_WEATHER8))
                 {
 
+                    // Format sensor ID once for reuse
+                    char id_buf[16];
+                    snprintf(id_buf, sizeof(id_buf), "%08X", (unsigned int)this->ws_.sensor[i].sensor_id);
+
                     // Publish sensor ID
                     if (this->sensor_id_sensor_ != nullptr)
                     {
-                        char id_str[16];
-                        snprintf(id_str, sizeof(id_str), "%08X", (unsigned int)this->ws_.sensor[i].sensor_id);
-                        this->sensor_id_sensor_->publish_state(id_str);
+                        this->sensor_id_sensor_->publish_state(id_buf);
                     }
 
                     // Publish RSSI
@@ -112,6 +114,27 @@ namespace esphome
                     {
                         this->light_sensor_->publish_state(this->ws_.sensor[i].w.light_klx);
                     }
+
+                    // Build WeatherData struct and fire on_value callbacks
+                    WeatherData data{};
+                    data.sensor_id = id_buf;
+                    data.rssi = this->ws_.sensor[i].rssi;
+                    data.battery_ok = this->ws_.sensor[i].battery_ok;
+                    data.temperature = this->ws_.sensor[i].w.temp_ok ? this->ws_.sensor[i].w.temp_c : NAN;
+                    data.temperature_ok = this->ws_.sensor[i].w.temp_ok;
+                    data.humidity = this->ws_.sensor[i].w.humidity_ok ? this->ws_.sensor[i].w.humidity : NAN;
+                    data.humidity_ok = this->ws_.sensor[i].w.humidity_ok;
+                    data.wind_gust = this->ws_.sensor[i].w.wind_ok ? this->ws_.sensor[i].w.wind_gust_meter_sec : NAN;
+                    data.wind_speed = this->ws_.sensor[i].w.wind_ok ? this->ws_.sensor[i].w.wind_avg_meter_sec : NAN;
+                    data.wind_direction = this->ws_.sensor[i].w.wind_ok ? this->ws_.sensor[i].w.wind_direction_deg : NAN;
+                    data.wind_ok = this->ws_.sensor[i].w.wind_ok;
+                    data.rain = this->ws_.sensor[i].w.rain_ok ? this->ws_.sensor[i].w.rain_mm : NAN;
+                    data.rain_ok = this->ws_.sensor[i].w.rain_ok;
+                    data.uv = this->ws_.sensor[i].w.uv_ok ? this->ws_.sensor[i].w.uv : NAN;
+                    data.uv_ok = this->ws_.sensor[i].w.uv_ok;
+                    data.light = this->ws_.sensor[i].w.light_ok ? this->ws_.sensor[i].w.light_klx : NAN;
+                    data.light_ok = this->ws_.sensor[i].w.light_ok;
+                    this->data_callback_.call(data);
 
                     ESP_LOGD(TAG, "Data published: Temp=%.1f°C, Hum=%d%%, Wind=%.1f/%.1f m/s @ %.0f°, Rain=%.1fmm, UV=%.1f, Light=%.1fklx, RSSI=%.1fdBm, Battery=%s",
                              this->ws_.sensor[i].w.temp_c,
