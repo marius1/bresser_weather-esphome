@@ -1,12 +1,14 @@
 import os
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome import pins
+from esphome import automation, pins
 from esphome.components import sensor, binary_sensor, text_sensor
 from esphome.const import (
     CONF_ID,
     CONF_TEMPERATURE,
     CONF_HUMIDITY,
+    CONF_TRIGGER_ID,
+    CONF_ON_VALUE,
     DEVICE_CLASS_TEMPERATURE,
     DEVICE_CLASS_HUMIDITY,
     DEVICE_CLASS_BATTERY,
@@ -18,7 +20,6 @@ from esphome.const import (
 )
 from esphome.core import CORE
 
-DEPENDENCIES = ["esp8266"]
 AUTO_LOAD = ["sensor", "binary_sensor", "text_sensor"]
 
 CONF_WIND_GUST = "wind_gust"
@@ -47,6 +48,10 @@ UNIT_DBM = "dBm"
 
 bresser_weather_ns = cg.esphome_ns.namespace("bresser_weather")
 BresserWeatherComponent = bresser_weather_ns.class_("BresserWeatherComponent", cg.Component)
+WeatherData = bresser_weather_ns.struct("WeatherData")
+WeatherDataTrigger = bresser_weather_ns.class_(
+    "WeatherDataTrigger", automation.Trigger.template(WeatherData)
+)
 
 RADIO_TYPES = {
     "cc1101": "CC1101",
@@ -122,6 +127,11 @@ CONFIG_SCHEMA = cv.Schema(
         ),
         cv.Optional(CONF_SENSOR_ID): text_sensor.text_sensor_schema(),
         cv.Optional(CONF_FILTER_SENSOR_ID): cv.hex_uint32_t,
+        cv.Optional(CONF_ON_VALUE): automation.validate_automation(
+            {
+                cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(WeatherDataTrigger),
+            }
+        ),
     }
 ).extend(cv.COMPONENT_SCHEMA)
 
@@ -184,6 +194,10 @@ async def to_code(config):
 
     if CONF_FILTER_SENSOR_ID in config:
         cg.add(var.set_filter_sensor_id(config[CONF_FILTER_SENSOR_ID]))
+
+    for conf in config.get(CONF_ON_VALUE, []):
+        trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
+        await automation.build_automation(trigger, [(WeatherData, "x")], conf)
 
     # Add library dependencies
     cg.add_platformio_option("lib_deps", ["matthias-bs/BresserWeatherSensorReceiver@0.37.0"])

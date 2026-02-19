@@ -87,3 +87,19 @@ bresser_weather:
     name: "Battery OK"
   sensor_id:
     name: "Sensor ID"
+  on_value:
+    then:
+      - lambda: |-
+          // WeatherData struct fields:
+          //   x.sensor_id       (std::string, e.g. "00001F11")
+          //   x.rssi             (float, dBm)
+          //   x.battery_ok       (bool)
+          //   x.temperature      (float, °C)       - check x.temperature_ok
+          //   x.humidity         (float, %)        - check x.humidity_ok
+          //   x.wind_gust        (float, m/s)      - check x.wind_ok
+          //   x.wind_speed       (float, m/s)      - check x.wind_ok
+          //   x.wind_direction   (float, °)        - check x.wind_ok
+          //   x.rain             (float, mm)       - check x.rain_ok
+          //   x.uv               (float)           - check x.uv_ok
+          //   x.light            (float, klx)      - check x.light_ok
+          ESP_LOGI("weather", "Received data from sensor %s", x.sensor_id.c_str());
